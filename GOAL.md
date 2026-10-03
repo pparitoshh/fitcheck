@@ -1,7 +1,7 @@
 # fitcheck — Goals & Expected Outcomes
 
 *European AI Hackathon · Oct 6–29, 2026 · Team Alembic (5 people) · Leonardo (CINECA)*
-*Successor to the DistillKit plan in the [alembic](https://github.com/pparitoshh/alembic) repo; its distillation pipeline trains the assistant model.*
+*Self-contained project: every goal, piece of code and dataset below is built inside this repo. Nothing depends on another project.*
 
 ---
 
@@ -14,7 +14,7 @@ The user picks the model and the training method. We tell them, from **measured 
 ## 2. The problem
 
 - Newcomers get cluster time (EuroHPC, university clusters) but have no HPC background. They over-request or under-request resources, hit OOM after waiting in the queue, and lose runs to the 24h wall-time limit.
-- GPU waste is well documented: in one Princeton study, 52% of users had at least one job with an idle GPU, and users routinely over-request memory and CPUs (see §13).
+- GPU waste is well documented: in one Princeton study, 52% of users had at least one job with an idle GPU, and users routinely over-request memory and CPUs (see §14).
 - Existing VRAM/cost calculators (ftune, web calculators) and general chatbots **estimate from formulas**. None of them reports how far its estimates are from real runs.
 - Cluster know-how lives in mentors' heads and emails. On Leonardo: no internet on compute nodes (download to shared storage first; outbound only via a reverse proxy through the login nodes), use uv/pixi instead of modules, run in `$WORK`/`$SCRATCH`, checkpoint because of the 24h limit.
 
@@ -51,7 +51,7 @@ The user picks the model and the training method. We tell them, from **measured 
 | M3 | **Calculator** | Formula baseline + correction fitted on the grid. Outputs memory, OOM yes/no, time, GPU-hours, € with an error band. Tested on held-out configs and against one public calculator. |
 | M4 | **Setup generator** | Templates for uv env + `sbatch` (checkpoint/resume, `$WORK`/`$SCRATCH`, `HF_HUB_OFFLINE=1`, pre-download step). Checked with `bash -n` + `sbatch --test-only`. |
 | M5 | **CLI** | `plan` (estimates + measured alternatives) and `setup` (writes the files). |
-| M6 | **0.6B assistant** | Qwen3-0.6B fine-tuned (existing distillation pipeline) on teacher-generated request → tool-call pairs. Asks a follow-up question when info is missing. |
+| M6 | **0.6B assistant** | Qwen3-0.6B fine-tuned with a **new, simple SFT script written in this repo** (LoRA or full FT, using fitcheck's own setup generator) on teacher-generated request → tool-call pairs. Asks a follow-up question when info is missing. |
 | M7 | **Case study** | Plan the 0.6B assistant's own training run with the tool, run it on Leonardo, report predicted vs. actual. |
 
 ### Should-have — bolt-ons for whoever has time (each independent of the others)
@@ -129,13 +129,26 @@ The user picks the model and the training method. We tell them, from **measured 
 - Supporting every cluster (Leonardo first).
 - A GUI.
 
-## 12. Demo story
+## 12. Built from scratch here (no reuse from other projects)
+
+Earlier experiments in other repos are not dependencies. Anything they covered is **redone in this repo** and listed here:
+
+| Item | What is redone | Where it lands |
+|---|---|---|
+| Training script for the assistant | New minimal SFT script (HF `transformers` + `peft`/`trl`), runnable locally and on Leonardo | M6 |
+| Request → tool-call dataset | New teacher-generated data and held-out test set, made for the `plan`/`setup` tool schema | M6 |
+| Evaluation of tool calls | New exact-match scorer (tool + arguments) | M6 / G4 |
+| Benchmark and calculator code | All new | M1–M3 |
+
+If a piece from an older project is copied in, it is rewritten to fit this repo and tested here; it is not imported.
+
+## 13. Demo story
 
 "I want to LoRA-fine-tune Qwen3-4B on 20k examples on Leonardo."
 → assistant asks for the sequence length → calls `plan` → "1× A100, ~22 GB, ~1.8 h, 1.8 GPU-hours, ~€4 on cloud; QLoRA alternative: 11 GB, 2.4 h" (with error bands) → calls `setup` → ready-to-submit `sbatch` + uv env.
 Then: "We planned our own assistant's training this way. Predicted X, actual Y."
 
-## 13. Evidence and references
+## 14. Evidence and references
 
 - Princeton Research Computing on GPU utilisation: https://researchcomputing.princeton.edu/document/6891
 - NERSC Perlmutter resource utilisation study: https://hgpu.org/?p=27716
