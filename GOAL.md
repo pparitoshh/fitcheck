@@ -94,6 +94,19 @@ The band is what makes the number *actionable*: it tells the user how much headr
 
 Cut line if behind: drop micro-batch 4 for the 0.6B rows first, then the 8B full-FT FSDP row.
 
+**Where each piece runs:**
+
+| # | Where it runs | GPU? | LLM? |
+|---|---|---|---|
+| M1–M2 | Leonardo compute nodes (Slurm job array) | Yes, ≈ 10 GPU-hours | Fine-tunes Qwen3 models for ~50 steps **only to measure** memory and time; no model is asked to generate anything |
+| M3 | Anywhere (laptop, login node, CI). Fitted once on the grid; the coefficients ship with the package | No | No: formula + linear regression, millisecond predictions |
+| M4 | Anywhere. `bash -n` locally; `sbatch --test-only` on a Leonardo login node | No | No: fills templates with the user's config and M3's estimates |
+| M5 | User's laptop or a Leonardo login node | No | No: `plan` calls M3, `setup` calls M4 |
+| M6 | Training on Leonardo (< 1 GPU-hour); inference on a laptop (Q4_K_M GGUF) | Training only | Yes: Qwen3-0.6B is an **optional** front end that turns plain language into `plan`/`setup` calls. The teacher (external API, via the reverse proxy) is used once to generate its training data |
+| M7 | Leonardo compute nodes | Yes | Trains M6's model |
+
+The core product (M3–M5) is lightweight and works offline, including on login nodes. Users can skip the assistant and use the CLI directly, or call the same tools from Claude/ChatGPT via the MCP server (S1).
+
 ### Should-have — bolt-ons for whoever has time (each independent of the others)
 
 - **S1:** MCP server wrapping the CLI (small task, high value).
