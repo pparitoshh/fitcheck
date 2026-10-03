@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "model_id": "Qwen/Qwen3-0.6B",
+  "model_revision": "main",
+  "training_method": "lora",
+  "sequence_length": 512,
+  "micro_batch_size": 1,
+  "max_steps": 50,
+  "lora": {
+    "rank": 16,
+    "alpha": 32,
+    "target_modules": ["all-linear"]
+  }
+}
